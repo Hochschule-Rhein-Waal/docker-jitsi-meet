@@ -1,8 +1,18 @@
 version: '3'
 
+volumes:
+  ssl:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.0.5,rw
+      device: ":/data/ssl"
+
+
 services:
     # Frontend
     web:
+        #build: ./web
         image: jitsi/web:latest
         restart: ${RESTART_POLICY}
         ports:
@@ -12,7 +22,16 @@ services:
             - ${CONFIG}/web:/config:Z
             - ${CONFIG}/web/crontabs:/var/spool/cron/crontabs:Z
             - ${CONFIG}/transcripts:/usr/share/jitsi-meet/transcripts:Z
+            #- ${CONFIG}/web/letsencrypt:/etc/letsencrypt
+            - ssl:/config/keys:ro
+            - ssl:/usr/share/nginx/html
         environment:
+            - VIRTUAL_HOST
+            - VIRTUAL_PROTO
+            - VIRTUAL_PORT
+            - SSL_CERT_FILE
+            - SSL_CERT_KEY
+
             - AMPLITUDE_ID
             - ANALYTICS_SCRIPT_URLS
             - ANALYTICS_WHITELISTED_EVENTS
@@ -127,6 +146,7 @@ services:
             - XMPP_MUC_DOMAIN
             - XMPP_RECORDER_DOMAIN
         networks:
+            proxy-tier:
             meet.jitsi:
 
     # XMPP server
@@ -303,3 +323,6 @@ services:
 # Custom network so all services can communicate using a FQDN
 networks:
     meet.jitsi:
+    proxy-tier:
+      external:
+        name: nginx_proxy-tier
